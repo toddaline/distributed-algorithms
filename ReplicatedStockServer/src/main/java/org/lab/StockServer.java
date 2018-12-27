@@ -13,6 +13,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class StockServer extends ReceiverAdapter {
+
+    private static final String CONFIG_PATH = "./config/config.xml";
+
     private final Map<String, Double> stocks = new HashMap<>();
     private JChannel channel;
     private RpcDispatcher disp;
@@ -154,15 +157,7 @@ public class StockServer extends ReceiverAdapter {
 
 
     public static void main(String[] args) throws Exception {
-        String props = "udp.xml";
-        for (int i = 0; i < args.length; i++) {
-            if (args[i].equals("-props")) {
-                props = args[++i];
-                continue;
-            }
-            System.out.println("ReplicatedStockServer [-props <XML config file>]");
-            return;
-        }
+        String props = CONFIG_PATH;
 
         new StockServer().start(props);
     }
