@@ -5,6 +5,7 @@ import org.jgroups.ReceiverAdapter;
 import org.jgroups.View;
 import org.jgroups.blocks.RequestOptions;
 import org.jgroups.blocks.RpcDispatcher;
+import org.jgroups.blocks.locking.LockService;
 import org.jgroups.util.RspList;
 import org.jgroups.util.Util;
 
@@ -12,11 +13,13 @@ import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.locks.Lock;
 
 public class StockServer extends ReceiverAdapter {
     private final Map<String, Double> stocks = new HashMap<>();
     private JChannel channel;
     private RpcDispatcher disp; // to invoke RPCs
+    private Lock lock;
 
 
     /**
@@ -40,6 +43,7 @@ public class StockServer extends ReceiverAdapter {
     }
 
     private void start(String props) throws Exception {
+        lock = new LockService(channel).getLock("lock");
         channel = new JChannel(props);
         disp = new RpcDispatcher(channel, this).setMembershipListener(this);
         disp.setStateListener(this);
@@ -166,6 +170,7 @@ public class StockServer extends ReceiverAdapter {
         String key = readString("Symbol");
         Double oldValue = Double.valueOf(readString("old val"));
         Double newValue = Double.valueOf(readString("new val"));
+        lock.lock();
         try {
             currentValue = stocks.get(key);
             if (Objects.equals(oldValue, currentValue)) {
@@ -182,6 +187,8 @@ public class StockServer extends ReceiverAdapter {
             return false;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            lock.unlock();
         }
     }
 
