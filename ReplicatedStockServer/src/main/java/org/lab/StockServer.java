@@ -1,4 +1,4 @@
-package main.java.org.lab;
+package org.lab;
 
 import org.jgroups.JChannel;
 import org.jgroups.ReceiverAdapter;
@@ -11,15 +11,17 @@ import org.jgroups.util.Util;
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class StockServer extends ReceiverAdapter {
-
-    private static final String CONFIG_PATH = "./config/config.xml";
-
     private final Map<String, Double> stocks = new HashMap<>();
     private JChannel channel;
-    private RpcDispatcher disp;
+    private RpcDispatcher disp; // to invoke RPCs
 
+
+    /**
+     * Assigns a value to a stock
+     */
     public void _setStock(String name, double value) {
         synchronized (stocks) {
             stocks.put(name, value);
@@ -27,7 +29,9 @@ public class StockServer extends ReceiverAdapter {
         }
     }
 
-
+    /**
+     * Removes a stock from the hashmap
+     */
     public void _removeStock(String name) {
         synchronized (stocks) {
             stocks.remove(name);
@@ -41,7 +45,7 @@ public class StockServer extends ReceiverAdapter {
         disp.setStateListener(this);
         channel.connect("stocks");
         disp.start();
-        channel.getState(null, 30000);
+        channel.getState(null, 30000); // fetches the state from the coordinator
         while (true) {
             int c = Util.keyPress("[1] Show stocks [2] Get quote [3] Set quote [4] Remove quote [x] Exit");
             try {
@@ -58,6 +62,8 @@ public class StockServer extends ReceiverAdapter {
                     case '4':
                         removeStock();
                         break;
+                    case '5':
+                        compareAndSwap();
                     case 'x':
                         channel.close();
                         return;
@@ -155,9 +161,41 @@ public class StockServer extends ReceiverAdapter {
         return sb.toString();
     }
 
+    public boolean compareAndSwap() throws IOException {
+        Double currentValue;
+        String key = readString("Symbol");
+        Double oldValue = Double.valueOf(readString("old val"));
+        Double newValue = Double.valueOf(readString("new val"));
+        try {
+            currentValue = stocks.get(key);
+            if (Objects.equals(oldValue, currentValue)) {
+                RspList<Boolean> responses = disp.callRemoteMethods(
+                        null,
+                        "_setStock",
+                        new Object[]{key, newValue},
+                        new Class[]{String.class, double.class},
+                        RequestOptions.SYNC()
+                );
+                return !responses.getSuspectedMembers().isEmpty()
+                        && responses.getResults().stream().allMatch(Boolean::booleanValue);
+            }
+            return false;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
     public static void main(String[] args) throws Exception {
-        String props = CONFIG_PATH;
+        String props = "udp.xml";
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].equals("-props")) {
+                props = args[++i];
+                continue;
+            }
+            System.out.println("ReplicatedStockServer [-props <XML config file>]");
+            return;
+        }
 
         new StockServer().start(props);
     }
