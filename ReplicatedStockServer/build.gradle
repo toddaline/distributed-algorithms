@@ -1,0 +1,14 @@
+apply plugin:'java'
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+dependencies {
+    compile "org.jgroups:jgroups:4.0.15.Final"
+}
+jar {
+    baseName = 'stock-server-lab'
+}
+apply plugin: 'application'
+
+mainClassName = 'main.java.org.lab.StockServer'

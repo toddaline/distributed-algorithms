@@ -1,4 +1,4 @@
-package org.lab;
+package main.java.org.lab;
 
 import org.jgroups.JChannel;
 import org.jgroups.ReceiverAdapter;
@@ -15,12 +15,8 @@ import java.util.Map;
 public class StockServer extends ReceiverAdapter {
     private final Map<String, Double> stocks = new HashMap<>();
     private JChannel channel;
-    private RpcDispatcher disp; // to invoke RPCs
+    private RpcDispatcher disp;
 
-
-    /**
-     * Assigns a value to a stock
-     */
     public void _setStock(String name, double value) {
         synchronized (stocks) {
             stocks.put(name, value);
@@ -28,9 +24,7 @@ public class StockServer extends ReceiverAdapter {
         }
     }
 
-    /**
-     * Removes a stock from the hashmap
-     */
+
     public void _removeStock(String name) {
         synchronized (stocks) {
             stocks.remove(name);
@@ -44,7 +38,7 @@ public class StockServer extends ReceiverAdapter {
         disp.setStateListener(this);
         channel.connect("stocks");
         disp.start();
-        channel.getState(null, 30000); // fetches the state from the coordinator
+        channel.getState(null, 30000);
         while (true) {
             int c = Util.keyPress("[1] Show stocks [2] Get quote [3] Set quote [4] Remove quote [x] Exit");
             try {
